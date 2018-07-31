@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "tempfile"
+require "open3"
+
+$stdout.sync = true
+
+$stdout.write "Multiplier: "
+num = $stdin.gets.to_f
+
+last_data = Clipboard.paste
+
+while true
+  data = Clipboard.paste
+  if data == last_data
+    sleep 0.1
+    next
+  end
+  $stdout.puts data
+  data = data.to_f
+  data *= num
+  data = data.to_s
+  Clipboard.copy(data)
+  $stdout.puts data
+  last_data = data
+  $stdout.puts ""
+end
+

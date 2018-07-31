@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "shellwords"
+
+username_hostname = ARGV[0]
+
+if (1..1).include?(ARGV.size) != true
+  $stdout.puts "#{$PROGRAM_NAME} user@host"
+  exit 1
+end
+
+pub_key = nil
+File.open("#{ENV["HOME"]}/.ssh/id_rsa.pub", "r:utf-8"){|file|
+  pub_key = file.read()
+}
+
+pub_key.chomp!
+pub_key = Shellwords.shellescape(pub_key)
+
+ret = system("ssh -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{username_hostname} 'pwd'")
+
+if ret == false
+  system("ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no #{username_hostname} 'mkdir -p ~/.ssh/ && echo #{pub_key} >> ~/.ssh/authorized_keys'")
+end
+

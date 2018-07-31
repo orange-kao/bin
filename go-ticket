@@ -1,0 +1,26 @@
+#!/bin/bash
+
+TICKET_BASE_DIR=${HOME}/ticket
+TICKET_TODAY=${TICKET_BASE_DIR}/today
+
+current_date=`date "+%F"`
+ticket_dir=${TICKET_BASE_DIR}/${current_date}
+ticket_today_destination=`ls -l ${TICKET_TODAY} 2> /dev/null | grep -o "[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$"`
+
+if ! [ -d "${ticket_dir}" ]; then
+    mkdir -p ${ticket_dir}
+fi
+
+if [ "${current_date}" != "${ticket_today_destination}" ]; then
+    if [ -h ${TICKET_TODAY} ]; then
+        rm ${TICKET_TODAY}
+        ln -s ${current_date} ${TICKET_TODAY}
+    elif ! [ -e ${TICKET_TODAY} ]; then
+        ln -s ${current_date} ${TICKET_TODAY}
+    else
+        echo "Failed to create 'today' sumbolic link" >&2
+    fi
+fi
+
+echo ${ticket_dir}
+

@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "tempfile"
+require "digest"
+
+data = Clipboard.paste
+checksum = Digest::SHA512.hexdigest(data)
+file = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+begin
+  file.write data
+  file.close
+
+  system("vim #{file.path}")
+
+  file.open
+  data = file.read
+  file.close
+
+  # If there's no change, do not modify the clipboard
+  if Digest::SHA512.hexdigest(data) != checksum
+    Clipboard.copy(data.chomp)
+  end
+ensure
+  file.close
+  file.unlink
+end
+

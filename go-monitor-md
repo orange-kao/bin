@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "open3"
+
+$stdouterr_mutex = Mutex.new
+
+while true
+  system("inotifywait -e MODIFY .")
+
+  thread_arr = []
+  file_list = Dir.glob("*.md")
+  file_list.each{|md_filename|
+    thread = Thread.new {
+      html_filename = md_filename.gsub(/\.md$/, ".html")
+
+      html_data, exec_result = Open3.capture2("go-md2html #{md_filename}")
+      if exec_result.exitstatus != 0
+        $stdouterr_mutex.synchronize{
+          $stderr.puts "Error processing #{md_filename}"
+        }
+        break
+      end
+
+      File.open(html_filename, "w:utf-8"){|html_file|
+        html_file.write(html_data)
+      }
+    }
+    thread_arr.push(thread)
+  }
+  thread_arr.each{|thread|
+    thread.join()
+  }
+end
+

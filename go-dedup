@@ -1,0 +1,175 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "digest"
+require "tempfile"
+require "csv"
+
+def generate_size_indexed_list(list)
+  result = {}
+  list.each{|item|
+    if File.directory?(item)
+      Dir.glob(File.join(item, "**/*")){|filename|
+        if File.file?(filename) != true
+          next
+        end
+
+        $stdout.puts "Scanning: #{filename}"
+
+        file_size = File.stat(filename).size
+
+        if result.has_key?(file_size) == false
+          result[file_size] = []
+        end
+        result[file_size].push(filename)
+      }
+    else
+      $stderr.puts "#{item.inspect} is not a directory."
+      exit 1
+    end
+  }
+
+  return result
+end
+
+def get_file_header_sha512(filename, head_size = nil)
+  if head_size == nil
+    return Digest::SHA512.file(filename).hexdigest
+  end
+
+  data = nil
+  File.open(filename, "rb"){|file|
+    data = file.read(head_size)
+  }
+  if data == nil
+    data = String.new
+  end
+  return Digest::SHA512.hexdigest(data)
+end
+
+def generate_hexdigest_indexed_list(size_indexed_list, head_size = nil)
+  result = {}
+  size_indexed_list.each_pair{|old_key, filename_arr|
+    filename_arr.each{|filename|
+      if head_size == nil
+        $stdout.puts "SHA512 hash calculation: #{filename}"
+      else
+        $stdout.puts "Header (#{head_size}) SHA512 hash calculation: #{filename}"
+      end
+
+      hexdigest = get_file_header_sha512(filename, head_size)
+
+      if result.has_key?(hexdigest) == false
+        result[hexdigest] = []
+      end
+      result[hexdigest].push(filename)
+    }
+  }
+  return result
+end
+
+def indexed_list_delete_single(indexed_list)
+  indexed_list.delete_if{|key, filename_arr|
+    filename_arr.size == 1
+  }
+end
+
+def indexed_list_sort(indexed_list)
+  indexed_list.each_pair{|key, filename_arr|
+    filename_arr.sort!{|a, b|
+      if a.size < b.size
+        next -1
+      elsif b.size < a.size
+        next 1
+      end
+      next a <=> b
+    }
+  }
+end
+
+def indexed_list_to_csv_file(indexed_list)
+  file = Tempfile.new(["tmp-#{File.basename(__FILE__)}-", ".csv"])
+  file.close
+
+  CSV.open(file.path, "w:utf-8"){|csv|
+    indexed_list.each_pair{|key, filename_arr|
+      csv << ([key] + filename_arr)
+    }
+  }
+  return file.path
+end
+
+def csv_file_to_indexed_list(filename)
+  result = {}
+  CSV.foreach(filename){|row|
+    key = row.shift
+    row.delete("")
+    row.delete(nil)
+    result[key] = row
+  }
+  return result
+end
+
+# Scan file, index by size
+size_indexed_name_list = generate_size_indexed_list(ARGV)
+indexed_list_delete_single(size_indexed_name_list)
+
+# Index by header (1KiB) SHA512
+header_1k_indexed_name_list = generate_hexdigest_indexed_list(size_indexed_name_list, 1024)
+indexed_list_delete_single(header_1k_indexed_name_list)
+
+# Index by header (1MiB) SHA512
+header_1m_indexed_name_list = generate_hexdigest_indexed_list(header_1k_indexed_name_list, 1024*1024)
+indexed_list_delete_single(header_1m_indexed_name_list)
+
+# Index by full SHA512
+hexdigest_indexed_name_list = generate_hexdigest_indexed_list(header_1m_indexed_name_list)
+indexed_list_delete_single(hexdigest_indexed_name_list)
+
+indexed_list_sort(hexdigest_indexed_name_list)
+csv_filename = indexed_list_to_csv_file(hexdigest_indexed_name_list)
+
+$stdout.puts "Edit the CSV file. REMOVE the name you want to KEEP."
+$stdout.puts csv_filename
+$stdout.puts "This will be the LIST FOR DELETION."
+$stdout.puts "Press Enter when you're done"
+$stdin.gets
+
+user_indexed_delete_list = csv_file_to_indexed_list(csv_filename)
+
+list_deleted = []
+
+hexdigest_indexed_name_list.each_pair{|hexdigest, all_filename_arr|
+  user_filename_arr = user_indexed_delete_list[hexdigest]
+  if user_filename_arr == nil
+    # User deleted the CSV line
+    next
+  end
+
+  delete_candidate = []
+  all_filename_arr.each{|delete_filename|
+    if user_filename_arr.include?(delete_filename)
+      delete_candidate.push(delete_filename)
+    end
+  }
+  delete_candidate.uniq!
+
+  if delete_candidate.size == all_filename_arr.size
+    $stdout.puts "Cannot delete all: #{hexdigest}"
+    all_filename_arr.each{|delete_filename|
+      $stdout.puts "  #{delete_filename}"
+    }
+    next
+  end
+
+  delete_candidate.each{|delete_filename|
+    File.delete(delete_filename)
+    list_deleted.push(delete_filename)
+  }
+}
+
+$stdout.puts "Files deleted:"
+list_deleted.each{|filename|
+  $stdout.puts filename
+}
+

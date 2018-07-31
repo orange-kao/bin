@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+file_list = ARGV
+
+lockfile = File.open("/tmp/cpu-busy-lock", "ab")
+if lockfile.flock(File::LOCK_EX | File::LOCK_NB) != 0
+  $stderr.puts "Waiting for CPU busy lock to release..."
+  lockfile.flock(File::LOCK_EX)
+end
+
+file_list.each{|filename|
+  if File.file?(filename) != true
+    $stderr.puts "File #{filename.inspect} not exist"
+    exit 1
+  end
+
+  output_filename = filename.gsub(/\.gpg$/, "")
+
+  if filename == output_filename
+    $stderr.puts "File #{filename.inspect} does not have .gpg suffix"
+    exit 1
+  end
+
+  if File.file?(output_filename) != false
+    $stderr.puts "Output file #{output_filename.inspect} already exist"
+    exit 1
+  end
+
+  $stderr.puts "Decrypting #{filename.inspect}..."
+  retval = system("gpg -o #{output_filename.inspect} -d #{filename.inspect}")
+  if retval != true
+    $stderr.puts "Error in decrypting #{filename.inspect}"
+    exit 1
+  end
+
+  File.unlink(filename)
+}
+

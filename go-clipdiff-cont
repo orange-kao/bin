@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "#{File.dirname(__FILE__)}/llrblib/core"
+require "clipboard"
+require "digest"
+
+CURSOR_ON = "\e[?25h"
+CURSOR_OFF = "\e[?25l"
+GREEN = "\e[37;42;01m"
+RED = "\e[37;41;01m"
+NO_COLOUR = "\e[0m"
+COLOUR_ARRAY = [GREEN, RED]
+
+console = ConsoleLineRefresh.new($stderr)
+colour_current = 0
+old_checksum = ""
+
+begin
+  $stdout.write(CURSOR_OFF)
+  while true
+    ["-", "\\", "|", "/"].each{|busyicon|
+      data = Clipboard.paste
+      checksum = Digest::SHA1.hexdigest(data)
+      if checksum != old_checksum
+        console.clear
+#        console.puts(checksum)
+        console.puts("#{COLOUR_ARRAY[colour_current]}#{checksum}#{NO_COLOUR}")
+        old_checksum = checksum 
+        colour_current += 1
+        colour_current = colour_current % COLOUR_ARRAY.size
+      end
+      console.cws("#{COLOUR_ARRAY[colour_current]}#{busyicon}#{NO_COLOUR}")
+      sleep (1.0 / 15)
+    }
+  end
+rescue Interrupt
+  $stdout.write(NO_COLOUR)
+  $stdout.write(CURSOR_ON)
+end
+

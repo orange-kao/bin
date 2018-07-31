@@ -1,0 +1,139 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "tempfile"
+require 'barby'
+require 'barby/barcode/qr_code'
+require 'barby/barcode/code_128'
+require 'barby/barcode/code_39'
+require 'barby/barcode/ean_13'
+require 'barby/outputter/svg_outputter'
+require 'barby/outputter/png_outputter'
+
+def prep_temp_filename(filename = nil)
+  file_delete = true
+  if filename == nil
+    tempfile = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+    tempfile.close
+    filename = tempfile.path
+  else
+    file_delete = false
+  end
+
+  begin
+    yield(filename)
+    if file_delete == true
+      system("eog #{filename}")
+      sleep 1
+    end
+  ensure
+    if file_delete == true
+      FileUtils.rm(filename)
+    end
+  end
+end
+
+def show_qr(string, filename, file_type)
+  ratio = 10
+
+  barcode = Barby::QrCode.new(string)
+  File.open(filename, "w"){|file|
+    if file_type == :svg
+      file.write barcode.to_svg(:xdim => ratio, :margin => ratio * 4)
+    else
+      file.write barcode.to_png(:xdim => ratio, :margin => ratio * 4)
+    end
+  }
+end
+
+def show_1d(barcode_type, string, filename, file_type)
+  exp_w = (8.560 / 2.54 * 300).to_i
+  exp_h = (5.398 / 2.54 * 300).to_i
+  exp_m = ([exp_w, exp_h].min * 0.1).to_i
+
+  barcode = nil
+  if barcode_type == :ean13
+    barcode = Barby::EAN13.new(string)
+  elsif barcode_type == :code39
+    barcode = Barby::Code39.new(string)
+  elsif barcode_type == :code128
+    barcode = Barby::Code128.new(string)
+  end
+
+  outputter = nil
+  if file_type == :svg
+    outputter = Barby::SvgOutputter.new(barcode)
+  else
+    outputter = Barby::PngOutputter.new(barcode)
+  end
+
+  xdim = (exp_w - exp_m*2) / outputter.width
+  height = exp_h - exp_m*2
+
+  File.open(filename, "w"){|file|
+    if file_type == :svg
+      file.write outputter.to_svg(:xdim => xdim, :height => height, :margin => exp_m)
+    else
+      file.write outputter.to_png(:xdim => xdim, :height => height, :margin => exp_m)
+    end
+  }
+end
+
+def show_ean13(string, filename, file_type)
+  show_1d(:ean13, string, filename, file_type)
+end
+
+def show_code39(string, filename, file_type)
+  show_1d(:code39, string, filename, file_type)
+end
+
+def show_code128(string, filename, file_type)
+  show_1d(:code128, string, filename, file_type)
+end
+
+data = Clipboard.paste
+
+method_name = nil
+if File.basename($PROGRAM_NAME) == "go-cqr"
+  method_name = :show_qr
+elsif File.basename($PROGRAM_NAME) == "go-cean13"
+  method_name = :show_ean13
+elsif File.basename($PROGRAM_NAME) == "go-ccode39"
+  method_name = :show_code39
+elsif File.basename($PROGRAM_NAME) == "go-ccode128"
+  method_name = :show_code128
+else
+  $stderr.puts "Invalid mode"
+  exit 1
+end
+
+specified_filename = nil
+if ARGV.size >= 1
+  specified_filename = ARGV[0]
+end
+if ARGV.size >= 2
+  data = ARGV[1]
+end
+
+file_type = nil
+if specified_filename != nil && File.basename(specified_filename).split(".").last.downcase == "svg"
+  file_type = :svg
+end
+
+mecard_regexp = /\A(.+)\n\+([0-9]+)\z/
+
+if /\A(?:\-)?[0-9]+\.[0-9]+,[ ]*(?:\-)?[0-9]+\.[0-9]+\z/.match(data) != nil
+  data.gsub!(" ", "")
+  data = "geo:#{data}"
+  puts data.inspect
+elsif mecard_regexp.match(data) != nil
+  match = mecard_regexp.match(data)
+  data = "MECARD:N:#{match[1]};TEL:+#{match[2]};;"
+  puts data.inspect
+end
+
+prep_temp_filename(specified_filename){|temp_filename|
+  method(method_name).call(data, temp_filename, file_type)
+}
+

@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "rotp"
+require "tempfile"
+require 'barby'
+require 'barby/barcode/qr_code'
+require 'barby/outputter/svg_outputter'
+require "clipboard"
+
+GREEN = "\e[37;42;01m"
+RED = "\e[37;41;01m"
+NO_COLOR = "\e[0m"
+
+def show_qr(string, filename = nil)
+  file_delete = true
+  if filename == nil
+    tempfile = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+    tempfile.close
+    filename = tempfile.path
+  else
+    file_delete = false
+  end
+
+  begin
+    ratio = 10
+
+    barcode = Barby::QrCode.new(string)
+    File.open(filename, "w"){|file|
+      file.write barcode.to_svg(:xdim => ratio, :margin => ratio * 4)
+    }
+
+    system("eog #{filename}")
+    sleep 1
+  ensure
+    if file_delete == true
+      FileUtils.rm(filename)
+    end
+  end
+end
+
+secret = nil
+begin
+  system("stty -echo")
+  $stdout.write("Secret: ")
+  secret = $stdin.gets.chomp
+  $stdout.puts ""
+  system("stty echo")
+rescue
+  system("stty echo")
+end
+secret.gsub!(" ", "")
+totp = ROTP::TOTP.new(secret)
+secret = nil
+
+while true
+  $stdout.write("> ")
+  cmd = $stdin.gets.chomp
+  if cmd == ""
+    $stdout.puts totp.now
+  elsif cmd == "clipboard"
+    Clipboard.copy(totp.now)
+  elsif /\A[0-9]+\z/.match(cmd) != nil
+    result = totp.verify(cmd)
+    if result == true
+      $stdout.puts("#{GREEN} #{result.inspect} #{NO_COLOR}")
+    else
+      $stdout.puts("#{RED} #{result.inspect} #{NO_COLOR}")
+    end
+  elsif cmd == "exit" || cmd == "quit"
+    break
+  elsif cmd == "qr"
+    $stdout.write("Name: ")
+    name = $stdin.gets.chomp
+    uri = totp.provisioning_uri(name)
+    show_qr(uri)
+  else
+    $stdout.puts "Invalid command"
+  end
+end
+

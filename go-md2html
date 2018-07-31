@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+
+def print_html_header
+  result = ""
+
+  result += '<?xml version="1.0" encoding="utf-8"?>' + "\n"
+  result += '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"' + "\n"
+  result += '        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">' + "\n"
+  result += '<html xmlns="http://www.w3.org/1999/xhtml">' + "\n"
+  result += '<head>' + "\n"
+  result += '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />' + "\n"
+  result += '<meta name="robots" content="noindex, nofollow" />' + "\n"
+  result += '<title></title>' + "\n"
+  result += '</head>' + "\n"
+  result += '<body>' + "\n"
+
+  $stdout.write result
+end
+
+def print_html_footer
+  result = ""
+
+  result += '</body>' + "\n"
+  result += '</html>' + "\n"
+
+  $stdout.write result
+end
+
+
+filename = ARGV[0]
+
+if File.file?(filename) != true
+  $stderr.puts "File #{filename.inspect} not exist"
+  exit 1
+end
+
+print_html_header()
+system("markdown #{filename}")
+print_html_footer()
+
+#system("cat #{filename} | mkd2html")
+

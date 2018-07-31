@@ -1,0 +1,108 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "geokit"
+require "gpx"
+require "csv"
+require "time"
+require "optparse"
+
+options = {}
+OptionParser.new{|opt|
+  opt.on("--not-before TIME"){|o| options[:not_before] = o}
+  opt.on("--not-after  TIME"){|o| options[:not_after ] = o}
+  opt.on("--in-gpx     FILE"){|o| options[:in_gpx    ] = o}
+  opt.on("--out-gpx    FILE"){|o| options[:out_gpx   ] = o}
+  opt.on("--speed-csv  FILE"){|o| options[:speed_csv ] = o}
+  opt.on("--gpx-defuz-dist METRE"){|o| options[:defuz_dist] = o}
+}.parse!
+
+[:not_before, :not_after].each{|sym|
+  if options[sym] != nil
+    options[sym] = Time.parse(options[sym])
+  end
+}
+[:defuz_dist].each{|sym|
+  if options[sym] != nil
+    options[sym] = options[sym].to_f
+  end
+}
+
+Geokit::default_units = :meters
+
+filename = options[:in_gpx]
+gpx = GPX::GPXFile.new(:gpx_file => filename)
+
+if gpx.tracks.size != 1
+  $stderr.puts "Unsupported: this GPX have multiple tracks"
+  exit 1
+elsif gpx.tracks[0].segments.size != 1
+  $stderr.puts "Unsupported: this GPX have multiple segments"
+  exit 1
+elsif gpx.tracks[0].segments[0].points.size < 2
+  $stderr.puts "Unsupported: this GPX have less than two points"
+  exit 1
+end
+
+#t = gpx #GPXFile
+#t = gpx.tracks #Array
+#t = gpx.tracks[0] #Track
+#t = gpx.tracks[0].segments #Array
+#t = gpx.tracks[0].segments[0] #Segment
+#t = gpx.tracks[0].segments[0].points #Array
+#t = gpx.tracks[0].segments[0].points[0] #TrackPoint
+
+prev_loc_ori = nil
+prev_loc_def = nil
+max_speed = 0
+total_dist_without_defuz = 0
+total_dist_after_defuz = 0
+csv = nil
+if options[:speed_csv] != nil
+  csv = CSV.open(options[:speed_csv], "w:utf-8")
+end
+gpx.tracks[0].segments[0].points.delete_if{|pos|
+  if options[:not_before] != nil && pos.time < options[:not_before]
+    next true
+  elsif options[:not_after] != nil && pos.time > options[:not_after]
+    next true
+  end
+
+  if pos.speed != nil
+    speed_kph = pos.speed * 60 * 60 / 1000
+    if csv != nil
+      csv << [pos.time.localtime, speed_kph]
+    end
+    if speed_kph > max_speed
+      max_speed = speed_kph
+    end
+  end
+
+  next_loc = Geokit::LatLng.new(pos.lat, pos.lon)
+
+  if prev_loc_ori != nil
+    dist = prev_loc_ori.distance_to(next_loc)
+    total_dist_without_defuz += dist
+  end
+  prev_loc_ori = next_loc
+
+
+  if prev_loc_def != nil
+    dist = prev_loc_def.distance_to(next_loc)
+
+    if options[:defuz_dist] != nil && dist < options[:defuz_dist]
+      next true
+    end
+    total_dist_after_defuz += dist
+  end
+  prev_loc_def = next_loc
+  next false
+}
+if options[:out_gpx] != nil
+  gpx.write(options[:out_gpx])
+end
+
+$stdout.puts "Maximum speed: #{max_speed} km/h"
+$stdout.puts "Total distance witout defuz: #{total_dist_without_defuz}"
+$stdout.puts "Total distance after defuz:  #{total_dist_after_defuz}"
+

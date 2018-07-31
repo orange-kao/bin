@@ -1,0 +1,75 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "tempfile"
+require "digest"
+require "open3"
+
+GREEN = "\e[37;42;01m"
+RED = "\e[37;41;01m"
+NO_COLOR = "\e[0m"
+
+data1 = Clipboard.paste
+checksum1 = Digest::SHA512.hexdigest(data1)
+
+while true
+  $stdout.puts "Please hit enter for diff, after data copied to clipboard"
+  $stdout.puts "Or Ctrl+C to cancel"
+  $stdin.gets()
+
+  data2 = Clipboard.paste
+  checksum2 = Digest::SHA512.hexdigest(data2)
+
+  if checksum1 != checksum2
+    break
+  end
+
+  $stdout.puts "It's the same"
+  $stdout.puts "SHA512:"
+  $stdout.puts GREEN + checksum1 + NO_COLOR
+end
+
+$stdout.puts "SHA512:"
+$stdout.puts checksum1
+$stdout.puts RED + checksum2 + NO_COLOR
+
+file1 = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+file2 = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+file3 = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+begin
+  file1.write data1
+  file1.close
+  file2.write data2
+  file2.close
+
+  # Run diff
+  data3, exec_result = Open3.capture2("diff -u #{file1.path} #{file2.path}")
+  checksum3 = Digest::SHA512.hexdigest(data3)
+
+  # Write diff to file
+  file3.write(data3)
+  file3.close
+
+  # vim the diff
+  system("vim #{file3.path}")
+
+  # Load uesr changes
+  file3.open
+  data4 = file3.read
+  file3.close
+  checksum4 = Digest::SHA512.hexdigest(data4)
+
+  # If there's no change, do not modify the clipboard
+  if checksum3 != checksum4
+    Clipboard.copy(data4.chomp)
+  end
+ensure
+  file1.close
+  file2.close
+  file3.close
+  file1.unlink
+  file2.unlink
+  file3.unlink
+end
+

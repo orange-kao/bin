@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "tempfile"
+require "open3"
+require "shellwords"
+
+array_ori = Dir.glob("**/*")
+array_ori.sort!
+
+array_tmp = []
+array_ori.each{|item|
+  if File.file?(item)
+    array_tmp.push(item)
+  end
+}
+
+array_ori = array_tmp
+array_tmp = nil
+
+file_list_string = array_ori.join("\n")
+
+file = Tempfile.new("tmp-#{File.basename(__FILE__)}-")
+begin
+  file.write file_list_string
+  file.close
+
+  system("vim #{file.path}")
+
+  file.open
+  file_list_string = file.read
+  file.close
+ensure
+  file.close
+  file.unlink
+end
+
+array_new = file_list_string.split("\n")
+
+if array_ori.size != array_new.size
+  $stderr.puts "List size mismatch"
+  exit 1
+end
+
+array_ori.each_index{|index|
+  old_pathname = array_ori[index]
+  new_pathname = array_new[index]
+
+  if old_pathname == new_pathname
+    next
+  end
+
+  if File.file?(old_pathname) != true
+    $stderr.puts "#{old_pathname}: Original file not exist"
+    exit 1
+  end
+  if File.exist?(new_pathname) != false
+    $stderr.puts "#{old_pathname}: Destination file already exist"
+    exit 1
+  end
+
+  dirname = File.dirname(new_pathname)
+  if File.directory?(dirname) == false
+    Dir.mkdir(dirname)
+  end
+
+  $stderr.puts "mv #{Shellwords.escape(old_pathname)} #{Shellwords.escape(new_pathname)}"
+  File.rename(old_pathname, new_pathname)
+}
+

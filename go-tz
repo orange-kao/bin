@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+def show_multi_tz(time, tz_array, remark = nil)
+  time_format = "%Y-%m-%d %H:%M %:z"
+  $stdout.write time.strftime(time_format)
+  tz_array.each{|tz|
+    $stdout.write " == "
+    $stdout.write time.getlocal(tz).strftime(time_format)
+  }
+  if remark != nil
+    $stdout.write remark
+  end
+  $stdout.puts ""
+end
+
+if ARGV.size == 0
+  $stderr.puts "Syntax: $PROGRAM_NAME -07:00 -08:00 ..."
+  exit 1
+end
+
+now = Time.now
+now = now.round()
+now = now - (now.min * 60 + now.sec)
+tz_array = ARGV
+
+(-24..24).each{|hour_shift|
+  time = now + hour_shift * 60 * 60
+  remark = nil
+  if hour_shift == 0
+    remark = " <- NOW"
+  end
+  show_multi_tz(time, tz_array, remark)
+}
+

@@ -1,0 +1,167 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+$INITIAL_PWD = Dir.pwd.dup
+$EXECUTABLE_PATH = "#{File.expand_path(File.dirname($PROGRAM_NAME))}"
+$EXECUTABLE_NAME = "#{File.basename($PROGRAM_NAME)}"
+
+require "digest"
+
+HASH_ALGO = Digest::SHA512
+
+def gen_digest_line(path)
+  if File.directory?(path)
+    hexdigest = gen_dir_digest(path)
+    return "#{hexdigest} \##{path}"
+  elsif File.file?(path)
+    hexdigest = gen_file_digest(path)
+    return "#{hexdigest} *#{path}"
+  else
+    raise RuntimeError, "#{path.inspect} is not a file nor directory"
+  end
+end
+
+def gen_file_digest(file_path)
+    return HASH_ALGO.file(file_path).hexdigest
+end
+
+def gen_dir_digest(dir_path)
+    Dir.chdir(dir_path)
+    arr = Dir.glob("**/*")
+    arr.select!{|pathname|
+      if File.readable?(pathname) != true
+        raise RuntimeError, "File/dir #{pathname.inspect} is not readable"
+      end
+      File.file?(pathname)
+    }
+    arr.sort!
+
+    final_hash = HASH_ALGO.new
+    arr.each{|file_pathname|
+      final_hash.update(HASH_ALGO.digest(file_pathname))
+      final_hash.update(HASH_ALGO.file(file_pathname).digest)
+    }
+    return final_hash.hexdigest
+end
+
+def hash_line_split(line)
+  match = /\A([0-9a-f]{128}) ([\*\#])(.+)\z/.match(line)
+  if match == nil
+    return [nil, nil, nil]
+  end
+
+  if match[2] == "*"
+    return [:file, match[1], match[3]]
+  elsif match[2] == "\#"
+    return [:dir, match[1], match[3]]
+  end
+  raise RuntimeError, "Logic error"
+end
+
+mode = :hash
+if ARGV[0] == "-c"
+  mode = :check
+end
+
+########################################
+# Hash computation mode
+########################################
+if mode == :hash
+  error_occurred = false
+
+  ARGV.each{|cmd_arg|
+    begin
+      Dir.chdir($INITIAL_PWD)
+      digest_line = gen_digest_line(cmd_arg)
+      $stdout.puts digest_line
+    rescue StandardError, Errno::ENOENT, Errno::EACCES => e
+      $stderr.puts "#{$EXECUTABLE_NAME}: #{cmd_arg}: #{e.message}"
+      error_occurred = true
+      next
+    ensure
+      Dir.chdir($INITIAL_PWD)
+    end
+  }
+
+  if error_occurred == true
+    exit 1
+  end
+
+  exit 0
+end
+
+########################################
+# Hash verification mode
+########################################
+
+if ARGV.size != 2
+  $stderr.puts "Only support one file in verification mode"
+  exit 1
+end
+
+digest_file = ARGV[1]
+
+pass_count = 0
+fail_count = 0
+unreadable_count = 0
+invalid_line_count = 0
+
+File.open(digest_file, "r:utf-8"){|hash_file|
+  hash_file.each_line{|line|
+    line.chomp!
+    type_symbol, digest_expected, pathname = hash_line_split(line)
+    if type_symbol == nil
+      invalid_line_count += 1
+      next
+    end
+
+    digest_actual = nil
+    begin
+      Dir.chdir($INITIAL_PWD)
+      if type_symbol == :file
+        digest_actual = gen_file_digest(pathname)
+      elsif type_symbol == :dir
+        digest_actual = gen_dir_digest(pathname)
+      else
+        raise RuntimeError, "Logic error"
+      end
+    rescue StandardError, Errno::ENOENT, Errno::EACCES => e
+      $stderr.puts "#{$EXECUTABLE_NAME}: #{pathname}: #{e.message}"
+      $stdout.puts "#{pathname}: FAILED open or read"
+      unreadable_count += 1
+      next
+    ensure
+      Dir.chdir($INITIAL_PWD)
+    end
+    if digest_expected == digest_actual
+      $stdout.puts "#{pathname}: OK"
+      pass_count += 1
+    else
+      $stdout.puts "#{pathname}: FAILED"
+      fail_count += 1
+    end
+  }
+}
+
+if invalid_line_count != 0
+  $stderr.puts "#{$EXECUTABLE_NAME}: WARNING: #{invalid_line_count} line(s) improperly formatted"
+end
+
+if unreadable_count != 0
+  $stderr.puts "#{$EXECUTABLE_NAME}: WARNING: #{unreadable_count} listed file(s) could not be read"
+end
+
+if fail_count != 0
+  $stderr.puts "#{$EXECUTABLE_NAME}: WARNING: #{fail_count} computed checksum(s) did NOT match"
+end
+
+if unreadable_count != 0
+  exit 1
+elsif fail_count != 0
+  exit 1
+elsif pass_count == 0
+  exit 1
+end
+
+exit 0
+

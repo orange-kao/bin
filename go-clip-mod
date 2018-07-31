@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "tempfile"
+require "open3"
+
+$stdout.sync = true
+
+last_data = Clipboard.paste
+
+while true
+  data = Clipboard.paste
+  if data == last_data
+    sleep 0.1
+    next
+  end
+  #Clipboard.copy(data)
+  $stdout.puts data
+  last_data = data
+end
+

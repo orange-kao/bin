@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+def show_multi_tz(time, remark = nil)
+  time_format = "%Y-%m-%d %T %G-W%V-%u (%a)"
+  $stdout.write time.strftime(time_format)
+  if remark != nil
+    $stdout.write remark
+  end
+  $stdout.puts ""
+end
+
+range = ARGV[0]
+if range == nil
+  range = (-31..31)
+else
+  range = range.to_i
+  range = ((0-range)..(range))
+end
+
+now = Time.now
+now = now.round()
+now = now - (now.min * 60 + now.sec)
+
+$stdout.puts "(in ISO 8601 format. YYYY-MM-DD & ISO year/week)"
+range.each{|day_shift|
+  time = now + day_shift * 5 * 60
+  remark = nil
+  if day_shift == 0
+    remark = " <- NOW"
+  end
+  show_multi_tz(time, remark)
+}
+

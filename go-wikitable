@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "clipboard"
+require "csv"
+
+data = Clipboard.paste
+data.gsub!("\t", ",")
+data = CSV.parse(data)
+
+wiki_table = ""
+wiki_table += "{| class=\"wikitable sortable\"\n"
+
+first = true
+data.each{|row|
+  wiki_table += "|-\n"
+  row.each{|cell|
+    if first == false
+      wiki_table += "| "
+    else
+      wiki_table += "! "
+    end
+
+    cell_string = ""
+    if cell != nil
+      cell_string = cell
+      cell_string = cell_string.gsub("\xc2\xa0", " ") # Replace '&nbsp;'
+      cell_string = cell_string.lstrip
+      cell_string = cell_string.rstrip
+    end
+
+    color = nil
+    if /\A(Pass|Passed|Success|Succeed)/.match(cell_string)
+      color = "00ff00"
+    elsif /\A(Fail|Failed|Error)/.match(cell_string)
+      color = "ff0000"
+    end
+    if color != nil
+      wiki_table += "style=\"background: \##{color}\" | "
+    end
+
+    if cell_string == "" || cell_string == nil
+      wiki_table += "&nbsp;"
+    else
+      wiki_table += cell_string.gsub("\n", "<br />")
+    end
+
+    wiki_table += "\n"
+  }
+  first = false
+}
+wiki_table += "|}\n"
+
+Clipboard.copy wiki_table
+
