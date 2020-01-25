@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ "$#" -lt "1" ] || [ "$#" -gt "2" ]; then
+    echo "Syntax error"
+    exit 1
+fi
+
+if ! [ -b "$1" ]; then
+    echo "$1 is not a block device"
+    exit 1
+fi
+
+block_device=$1
+label="$2"
+device_model="$(udevadm info $block_device | grep "ID_MODEL=" | awk -F= '{print $2}')"
+
+if [ "$label" == "" ]; then
+    mkfs.vfat -n "${device_model}" ${block_device}
+else
+    mkfs.vfat -n "${label}" ${block_device}
+fi
+sync
+
