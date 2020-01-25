@@ -5,14 +5,12 @@ require "tempfile"
 require "open3"
 require "shellwords"
 
-array_ori = Dir.glob("*")
+array_ori = Dir.glob("**/*")
 array_ori.sort!
 
 array_tmp = []
 array_ori.each{|item|
   if File.file?(item)
-    array_tmp.push(item)
-  elsif File.directory?(item)
     array_tmp.push(item)
   end
 }
@@ -52,7 +50,7 @@ array_ori.each_index{|index|
     next
   end
 
-  if File.exist?(old_pathname) != true
+  if File.file?(old_pathname) != true
     $stderr.puts "#{old_pathname}: Original file not exist"
     exit 1
   end
