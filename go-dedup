@@ -5,6 +5,10 @@ require "digest"
 require "tempfile"
 require "csv"
 
+# Scan a list of directories, and
+# generate a hash with
+#   keys in file size
+#   value for an array of filenames
 def generate_size_indexed_list(list)
   result = {}
   list.each{|item|
@@ -47,6 +51,9 @@ def get_file_header_sha512(filename, head_size = nil)
   return Digest::SHA512.hexdigest(data)
 end
 
+# Generate a hash with
+#   keys in hexdigest
+#   value for an array of filenames
 def generate_hexdigest_indexed_list(size_indexed_list, head_size = nil)
   result = {}
   size_indexed_list.each_pair{|old_key, filename_arr|
@@ -68,12 +75,16 @@ def generate_hexdigest_indexed_list(size_indexed_list, head_size = nil)
   return result
 end
 
+# Rmove key-value pair if the is only one element in the array
 def indexed_list_delete_single(indexed_list)
   indexed_list.delete_if{|key, filename_arr|
     filename_arr.size == 1
   }
 end
 
+# Update the hash with
+#   keys unchanged
+#   value (array of filenames) sorted, by size, and by Ruby default
 def indexed_list_sort(indexed_list)
   indexed_list.each_pair{|key, filename_arr|
     filename_arr.sort!{|a, b|
@@ -85,6 +96,33 @@ def indexed_list_sort(indexed_list)
       next a <=> b
     }
   }
+end
+
+# Return the hash which is sorted by the first filename
+def indexed_list_master_sort(indexed_list)
+  first_filename_to_key = {}
+  first_filename_arr = []
+  indexed_list.each_pair{|key, filename_arr|
+    first_filename_to_key[filename_arr.first] = key
+    first_filename_arr.push(filename_arr.first)
+  }
+
+  first_filename_arr.sort!{|a, b|
+    if a.size < b.size
+      next -1
+    elsif b.size < a.size
+      next 1
+    end
+    next a <=> b
+  }
+
+  result = {}
+  first_filename_arr.each{|first_filename|
+    key = first_filename_to_key[first_filename]
+    result[key] = indexed_list[key]
+  }
+
+  return result
 end
 
 def indexed_list_to_csv_file(indexed_list)
@@ -127,6 +165,7 @@ hexdigest_indexed_name_list = generate_hexdigest_indexed_list(header_1m_indexed_
 indexed_list_delete_single(hexdigest_indexed_name_list)
 
 indexed_list_sort(hexdigest_indexed_name_list)
+hexdigest_indexed_name_list = indexed_list_master_sort(hexdigest_indexed_name_list)
 csv_filename = indexed_list_to_csv_file(hexdigest_indexed_name_list)
 
 $stdout.puts "Edit the CSV file. REMOVE the name you want to KEEP."
