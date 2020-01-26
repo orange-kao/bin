@@ -1,0 +1,53 @@
+#!/usr/bin/python3
+
+import sys
+import os
+import math
+
+import matplotlib.pyplot as plt
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f"Generate CDF (cumulative distribution function) histogram of file size of directory/ies")
+        print(f"")
+        print(f"Syntax:")
+        print(f"    {sys.argv[0]} dir...")
+        sys.exit(1)
+
+    argv_list = sys.argv
+    argv_list.pop(0)
+    dir_list = argv_list
+
+    size_list = []
+
+    for cur_dir in dir_list:
+        for root, dirs, files in os.walk(cur_dir):
+            for file_name in files:
+                pathname = os.path.join(root, file_name)
+                file_size = os.path.getsize(pathname)
+
+                file_size_log = 0
+                if file_size != 0:
+                    file_size_log = math.log(file_size, 2)
+                size_list.append(file_size_log)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.hist(
+            size_list,
+            cumulative=True,
+            density=True,
+            histtype='step',
+            bins=1000,
+                            )
+
+    ax.grid(True)
+    ax.set_title('Cumulative step histograms of file size')
+    ax.set_xlabel('File size (log of 2)')
+    ax.set_ylabel('Likelihood')
+
+    plt.show()
+
+if __name__ == "__main__":
+    main()
+
