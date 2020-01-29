@@ -1,0 +1,45 @@
+#!/usr/bin/python3
+
+import sys
+import os
+
+from lazylib import confloader
+from lazylib import hruploader
+
+class MainClass:
+    def main(self):
+        config = confloader.LazyConfigLoader.get_config(".aws")
+        self.config = config
+
+        self.ru = hruploader.HashedRetentionUploader(
+                bucket=config["s3"]["bucket"],
+                storage_class=config["s3"]["storage_class"],
+                sse=config["s3"]["server_side_encryption"],
+                dyna_table=config["dynamodb"]["table"],
+                dyna_region=config["dynamodb"]["region"],
+                )
+
+        argv_list = sys.argv
+        argv_list.pop(0)
+
+        for file_dir_p in argv_list:
+            if os.path.isfile(file_dir_p):
+                self.handle_file(file_dir_p)
+            elif os.path.isdir(file_dir_p):
+                for root, dirs, files in os.walk(file_dir_p):
+                    for file_name in files:
+                        self.handle_file(os.path.join(root, file_name))
+            else:
+                print(f"Unable to process {repr(file_dir_p)}")
+                sys.exit(1)
+
+    def handle_file(self, file_name):
+        self.ru.upload(file_name)
+        if self.config["local"]["delete"] is True:
+            os.remove(file_name)
+            print("    Local file deleted.")
+
+if __name__ == "__main__":
+    main_class = MainClass()
+    main_class.main()
+
