@@ -42,13 +42,13 @@ def main():
                             )
 
     ax.grid(True)
-    ax.set_title(f"Cumulative step histograms of file size\n{', '.join(dir_list)}")
+    ax.set_title(f"Cumulative file size\n{', '.join(dir_list)}")
 
     p_of_2_list = []
-    for i in range(10):
+    for i in range(1, 10):
         p_of_2_list.append(f"{i}:{2**i}")
 
-    ax.set_xlabel(f"File size (log of 2).\n{', '.join(p_of_2_list)}\n10: 1KiB, 20: 1MiB, 30: 1GiB")
+    ax.set_xlabel(f"File size (log of 2)\n{', '.join(p_of_2_list)}\n10: 1KiB, 20: 1MiB, 30: 1GiB")
     ax.set_ylabel("Number of files")
 
     plt.show()
