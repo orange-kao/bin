@@ -58,7 +58,7 @@ class DedupCopyer:
         dst_dir = self.get_writable_dst_dir()
 
         dst_file = os.path.join(dst_dir, sha512)
-        dst_temp_file = os.path.join(dst_dir, "..", "temp-file")
+        dst_temp_file = os.path.join(dst_dir, "temp-file")
 
         shutil.copyfile(src_file, dst_temp_file)
         os.rename(dst_temp_file, dst_file)
