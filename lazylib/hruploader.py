@@ -15,7 +15,7 @@ class HashedRetentionUploader:
         self.dyna_list = ddbobjlst.DyanomoDbObjectList(dyna_table, dyna_region)
 
     @staticmethod
-    def generate_file_sha512_md5(file_name):
+    def generate_file_hexdigest_dict(file_name):
         sha512 = hashlib.sha512()
         md5 = hashlib.md5()
         sha1_4k = hashlib.sha1()
@@ -30,24 +30,27 @@ class HashedRetentionUploader:
                 if block_count < 256:
                     sha1_1m.update(byte_block)
                 block_count += 1
-        return [
-            sha512.hexdigest(),
-            md5.hexdigest(),
-            sha1_4k.hexdigest(),
-            sha1_1m.hexdigest() ]
+        return {
+            "sha512": sha512.hexdigest(),
+            "md5": md5.hexdigest(),
+            "sha1_4k": sha1_4k.hexdigest(),
+            "sha1_4m": sha1_1m.hexdigest(),
+        }
 
     def upload(self, file_name):
         print(f"{repr(file_name)}")
         print(f"    -> ", end="", flush=True)
-        obj_name, exp_etag, sha1_4k, sha1_1m = self.generate_file_sha512_md5(file_name)
+        file_hash_dict = self.generate_file_hexdigest_dict(file_name)
+        obj_name = file_hash_dict["sha512"]
+        exp_etag = file_hash_dict["md5"]
         print(f"{repr(obj_name)}")
 
         file_size = os.path.getsize(file_name)
         file_info = {
             "size": file_size,
             "md5": exp_etag,
-            "sha1_4k": sha1_4k,
-            "sha1_1m": sha1_1m,
+            "sha1_4k": file_hash_dict["sha1_4k"],
+            "sha1_1m": file_hash_dict["sha1_1m"],
         }
 
         # Check if it's listed in DynamoDB
