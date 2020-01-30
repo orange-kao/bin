@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import hashlib
+import sys
+import os
+
+def generate_file_sha512(file_name):
+    sha512 = hashlib.sha512()
+    with open(file_name, 'rb') as f:
+        for byte_block in iter(lambda: f.read(4096),b''):
+            sha512.update(byte_block)
+    return sha512.hexdigest()
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f"Verify the file content matches the file name.")
+        print(f"The filename is expected to be the SHA512 of the content.")
+        print(f"")
+        print(f"Syntax: {sys.argv[0]} dirs...")
+        sys.exit(1)
+
+    argv_list = sys.argv
+    argv_list.pop(0)
+    arg_dir_list = argv_list
+
+    byte_count = 0
+    exit_value = 0
+
+    for arg_dir in arg_dir_list:
+        for walk_root, walk_dirs, walk_files in os.walk(arg_dir):
+            for walk_file in walk_files:
+                file_pathname = os.path.join(walk_root, walk_file)
+                file_basename = os.path.basename(walk_file)
+                sha512 = generate_file_sha512(file_pathname)
+                file_size = os.path.getsize(file_pathname)
+                byte_count += file_size
+                if file_basename != sha512:
+                    print(f"{' '*79}\r", end="")
+                    print(f"Mismatch: {file_pathname}")
+                    exit_value = 1
+                else:
+                    print(f"{byte_count:_} bytes verified\r", end="")
+
+    print(f"{' '*79}\r", end="")
+    sys.exit(exit_value)
+
+if __name__ == "__main__":
+    main()
+

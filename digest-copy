@@ -1,7 +1,5 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-import logging
-import pprint
 import hashlib
 import sys
 import os
@@ -34,7 +32,7 @@ class DedupCopyer:
                 break
 
         if dst_dir is None:
-            raise RuntimeError("All destinations are 99%+ full")
+            raise RuntimeError("All destinations are 95%+ full")
 
         return dst_dir
 
@@ -66,13 +64,15 @@ class DedupCopyer:
 
 def main():
     if len(sys.argv) < 4:
-        print(f"Copy files fro source_dir to dest_dir(s). The filename at dest_dir will be SHA512 of the file content.")
+        print(f"Copy files from source_dir to dest_dir(s).")
+        print(f"The filename at dest_dir will be SHA512 of the file content.")
         print(f"")
         print(f"Skip file copy if")
         print(f"    * File modification time is earlier than time_threshold")
         print(f"    * File already exist in ANY of the dest_dir")
         print(f"")
-        print(f"It accept multiple dest_dir. It will be evaluated one-by-one, skipping any destination more than 95% full.")
+        print(f"It accept multiple dest_dir. It will be evaluated one-by-one,")
+        print(f"skipping any destination more than 95% full.")
         print(f"")
         print(f"Syntax: {sys.argv[0]} source_dir time_threshold dest_dir...")
         sys.exit(1)
