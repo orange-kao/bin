@@ -22,6 +22,7 @@ def main():
     size_list = []
 
     for cur_dir in dir_list:
+        file_count = 0
         for root, dirs, files in os.walk(cur_dir):
             for file_name in files:
                 pathname = os.path.join(root, file_name)
@@ -31,6 +32,9 @@ def main():
                 if file_size != 0:
                     file_size_log = math.log(file_size, 2)
                 size_list.append(file_size_log)
+                file_count += 1
+                print(f"Progress: {file_count:_} files in {cur_dir}\r", end="")
+        print(f"")
 
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.hist(
