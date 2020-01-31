@@ -3,6 +3,7 @@
 import sys
 import os
 from lazylib.hashedcopyer import HashedCopyer
+from lazylib.consoleprogress import ConsoleProgress
 
 def main():
     if len(sys.argv) < 2:
@@ -12,13 +13,14 @@ def main():
         print(f"Syntax: {sys.argv[0]} dirs...")
         sys.exit(1)
 
+    con = ConsoleProgress()
     argv_list = sys.argv
     argv_list.pop(0)
     arg_dir_list = argv_list
 
     file_count = 0
+    file_mismatch_count = 0
     byte_count = 0
-    exit_value = 0
 
     for arg_dir in arg_dir_list:
         for walk_root, walk_dirs, walk_files in os.walk(arg_dir):
@@ -30,16 +32,17 @@ def main():
                 file_count += 1
                 byte_count += file_size
                 if file_basename != sha512:
-                    print(f"{' '*79}\r", end="")
-                    print(f"Mismatch: {file_pathname}")
-                    exit_value = 1
+                    con.print(f"Mismatch: {file_pathname}")
+                    file_mismatch_count += 1
                 else:
-                    print(f"Progress: {byte_count:_} bytes in {file_count:_} files\r", end="")
+                    con.update(f"Progress: {byte_count:_} bytes in {file_count:_} files")
 
-    print(f"{' '*79}\r", end="")
-    if exit_value == 0:
-        print(f"{byte_count:_} bytes in {file_count:_} files verified")
-    sys.exit(exit_value)
+    if file_mismatch_count == 0:
+        con.print(f"{byte_count:_} bytes in {file_count:_} files verified")
+        sys.exit(0)
+    else:
+        con.print(f"WARNING: {file_count:_} files mismatch")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
