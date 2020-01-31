@@ -34,7 +34,7 @@ class HashedRetentionUploader:
             "sha512": sha512.hexdigest(),
             "md5": md5.hexdigest(),
             "sha1_4k": sha1_4k.hexdigest(),
-            "sha1_4m": sha1_1m.hexdigest(),
+            "sha1_1m": sha1_1m.hexdigest(),
         }
 
     def upload(self, file_name):
