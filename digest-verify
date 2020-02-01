@@ -41,7 +41,7 @@ def main():
         con.print(f"{byte_count:_} bytes in {file_count:_} files verified")
         sys.exit(0)
     else:
-        con.print(f"WARNING: {file_count:_} files mismatch")
+        con.print(f"WARNING: {file_mismatch_count:_} files mismatch")
         sys.exit(1)
 
 if __name__ == "__main__":
