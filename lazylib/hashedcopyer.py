@@ -22,6 +22,12 @@ class HashedCopyer:
                 return True
         return False
 
+    def find_exist_dst(self, sha512):
+        for dir_cand in self.dst_dir_list:
+            if os.path.isfile(os.path.join(dir_cand, sha512)) is True:
+                return dir_cand
+        return None
+
     def get_writable_dst_dir(self):
         dst_dir = None
         for dir_cand in self.dst_dir_list:
@@ -35,29 +41,50 @@ class HashedCopyer:
 
         return dst_dir
 
-    def copy(self, src_file, threshold_ts=None):
-        if threshold_ts is not None:
-            if os.path.getmtime(src_file) < threshold_ts:
-#                print(f"{repr(src_file)}")
-#                print("    File not modified, skip.")
-                return
-
+    def copy(self, src_file):
         print(f"{repr(src_file)}")
         print(f"    -> ", end="", flush=True)
         sha512 = self.generate_file_sha512(src_file)
         print(f"{repr(sha512)}")
-
 
         if self.is_exist_at_any_dst(sha512) is True:
             print("    Already exist, do nothing.")
             return
 
         dst_dir = self.get_writable_dst_dir()
-
         dst_file = os.path.join(dst_dir, sha512)
         dst_temp_file = os.path.join(dst_dir, "temp-file")
 
-        shutil.copyfile(src_file, dst_temp_file)
-        os.rename(dst_temp_file, dst_file)
-        print("    Not exist, copied.")
+        try:
+            shutil.copyfile(src_file, dst_temp_file)
+            os.rename(dst_temp_file, dst_file)
+            print("    Not exist, copied.")
+        except KeyboardInterrupt as e:
+            print("Clearning up partial copy...")
+            os.remove(dst_temp_file)
+            raise e
+
+    def move_src_repo(self, src_file):
+        print(f"{repr(src_file)}")
+        file_basename = os.path.basename(src_file)
+
+        dst_dir = self.find_exist_dst(file_basename)
+        if dst_dir is not None:
+            os.remove(src_file)
+            print(f"    Already exist in {dst_dir}, source deleted.")
+            return
+
+        dst_dir = self.get_writable_dst_dir()
+        dst_file = os.path.join(dst_dir, file_basename)
+        dst_temp_file = os.path.join(dst_dir, "temp-file")
+
+        try:
+            shutil.copyfile(src_file, dst_temp_file)
+            os.rename(dst_temp_file, dst_file)
+            os.remove(src_file)
+            print(f"    Moved to {dst_dir}")
+        except KeyboardInterrupt as e:
+            print("Clearning up partial copy...")
+            os.remove(dst_temp_file)
+            raise e
 

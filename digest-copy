@@ -18,9 +18,11 @@ Skip file copy if
 It accept multiple dest dir.
 It will be evaluated one-by-one, skipping any destination more than 95% full.
 """)
-    parser.add_argument("-e", "--epoch", type=float, nargs=1,
+    parser.add_argument("-e", "--epoch", type=float, action="store",
                         metavar="EPOCH",
                         help="Epoch threshold to avoid processing older files")
+    parser.add_argument("--move-src-repo", action="store_true",
+                        help="Move the file instead of copying. It will NOT verify the SHA512")
     parser.add_argument('src', type=str, nargs=1,
                         metavar="SRC",
                         help="Source directory")
@@ -30,16 +32,23 @@ It will be evaluated one-by-one, skipping any destination more than 95% full.
     args_dict = vars(parser.parse_args())
 
     src_dir = args_dict["src"][0]
-    threshold_ts = args_dict["epoch"][0]
+    threshold_ts = args_dict.get("epoch")
     dst_dir_list = args_dict["dest"]
+    is_move = args_dict.get("move_src_repo")
 
     copyer = HashedCopyer(dst_dir_list)
     for root, dirs, files in os.walk(src_dir):
         for file_name in files:
-            copyer.copy(
-                    src_file=os.path.join(root, file_name),
-                    threshold_ts=threshold_ts, 
-                    )
+            file_pathname = os.path.join(root, file_name)
+            if threshold_ts is not None:
+                if os.path.getmtime(file_pathname) < threshold_ts:
+                    continue
+
+            if is_move:
+                copyer.move_src_repo(file_pathname)
+                continue
+
+            copyer.copy(file_pathname)
 
 if __name__ == "__main__":
     main()
