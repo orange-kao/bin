@@ -2,28 +2,36 @@
 
 import sys
 import os
+from argparse import ArgumentParser
+from argparse import RawTextHelpFormatter
 from lazylib.hashedcopyer import HashedCopyer
 
 def main():
-    if len(sys.argv) < 4:
-        print(f"Copy files from source_dir to dest_dir(s).")
-        print(f"The filename at dest_dir will be SHA512 of the file content.")
-        print(f"")
-        print(f"Skip file copy if")
-        print(f"    * File modification time is earlier than time_threshold")
-        print(f"    * File already exist in ANY of the dest_dir")
-        print(f"")
-        print(f"It accept multiple dest_dir. It will be evaluated one-by-one,")
-        print(f"skipping any destination more than 95% full.")
-        print(f"")
-        print(f"Syntax: {sys.argv[0]} source_dir time_threshold dest_dir...")
-        sys.exit(1)
+    parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description="""
+Copy files from source dir to dest dir(s).
+The filename at dest_dir will be SHA512 of the file content.
 
-    argv_list = sys.argv
-    argv_list.pop(0)
-    src_dir = argv_list.pop(0)
-    threshold_ts = float(argv_list.pop(0))
-    dst_dir_list = argv_list
+Skip file copy if
+    * File modification time is earlier than time_threshold
+    * File already exist in ANY of the dest dir
+
+It accept multiple dest dir.
+It will be evaluated one-by-one, skipping any destination more than 95% full.
+""")
+    parser.add_argument("-e", "--epoch", type=float, nargs=1,
+                        metavar="EPOCH",
+                        help="Epoch threshold to avoid processing older files")
+    parser.add_argument('src', type=str, nargs=1,
+                        metavar="SRC",
+                        help="Source directory")
+    parser.add_argument('dest', type=str, nargs='+',
+                        metavar="DEST",
+                        help="Destination directory/directories")
+    args_dict = vars(parser.parse_args())
+
+    src_dir = args_dict["src"][0]
+    threshold_ts = args_dict["epoch"][0]
+    dst_dir_list = args_dict["dest"]
 
     copyer = HashedCopyer(dst_dir_list)
     for root, dirs, files in os.walk(src_dir):
