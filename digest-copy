@@ -20,9 +20,13 @@ It will be evaluated one-by-one, skipping any destination more than 95% full.
 """)
     parser.add_argument("-e", "--epoch", type=float, action="store",
                         metavar="EPOCH",
-                        help="Epoch threshold to avoid processing older files")
+                        help="Epoch threshold to skip older files")
+    parser.add_argument("-s", "--size-min", type=float, action="store",
+                        metavar="SIZE",
+                        help="Size threshold to skip smaller files")
     parser.add_argument("--move-src-repo", action="store_true",
-                        help="Move the file instead of copying. It will NOT verify the SHA512")
+                        help="Move the file instead of copying.\n"
+                             "WARNING: It will NOT verify the SHA512")
     parser.add_argument('src', type=str, nargs=1,
                         metavar="SRC",
                         help="Source directory")
@@ -33,6 +37,7 @@ It will be evaluated one-by-one, skipping any destination more than 95% full.
 
     src_dir = args_dict["src"][0]
     threshold_ts = args_dict.get("epoch")
+    threshold_size = args_dict.get("size_min")
     dst_dir_list = args_dict["dest"]
     is_move = args_dict.get("move_src_repo")
 
@@ -40,8 +45,13 @@ It will be evaluated one-by-one, skipping any destination more than 95% full.
     for root, dirs, files in os.walk(src_dir):
         for file_name in files:
             file_pathname = os.path.join(root, file_name)
+
             if threshold_ts is not None:
                 if os.path.getmtime(file_pathname) < threshold_ts:
+                    continue
+
+            if threshold_size is not None:
+                if os.path.getsize(file_pathname) < threshold_size:
                     continue
 
             if is_move:
