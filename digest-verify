@@ -2,21 +2,24 @@
 
 import sys
 import os
+from argparse import ArgumentParser
+from argparse import RawTextHelpFormatter
 from lazylib.hashedcopyer import HashedCopyer
 from lazylib.consoleprogress import ConsoleProgress
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"Verify the file content matches the file name.")
-        print(f"The filename is expected to be the SHA512 of the content.")
-        print(f"")
-        print(f"Syntax: {sys.argv[0]} dirs...")
-        sys.exit(1)
+    parser = ArgumentParser(formatter_class=RawTextHelpFormatter,
+                            description="""
+Verify the file content matches the file name.
+The filename is expected to be the SHA512 of the content.
+""")
+    parser.add_argument('dir', type=str, nargs='+',
+                        metavar="DIR",
+                        help="Directory to verify")
+    args_dict = vars(parser.parse_args())
 
     con = ConsoleProgress()
-    argv_list = sys.argv
-    argv_list.pop(0)
-    arg_dir_list = argv_list
+    arg_dir_list = args_dict["dir"]
 
     file_count = 0
     file_mismatch_count = 0
