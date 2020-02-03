@@ -7,7 +7,8 @@ from argparse import RawTextHelpFormatter
 from lazylib.hashedcopyer import HashedCopyer
 
 def main():
-    parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description="""
+    parser = ArgumentParser(formatter_class=RawTextHelpFormatter,
+                            description="""
 Copy files from source dir to dest dir(s).
 The filename at dest_dir will be SHA512 of the file content.
 
@@ -21,7 +22,7 @@ It will be evaluated one-by-one, skipping any destination more than 95% full.
     parser.add_argument("-e", "--epoch", type=float, action="store",
                         metavar="EPOCH",
                         help="Epoch threshold to skip older files")
-    parser.add_argument("-s", "--size-min", type=float, action="store",
+    parser.add_argument("-s", "--size-min", type=int, action="store",
                         metavar="SIZE",
                         help="Size threshold to skip smaller files")
     parser.add_argument("--move-src-repo", action="store_true",
