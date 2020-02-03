@@ -21,7 +21,7 @@ class DyanomoDbObjectList:
             }
         )
 
-    def is_object_exist(self, object_name, dic):
+    def is_object_exist(self, object_name, dic=None):
         response = self.table.get_item(
             Key={
                 'object-name': object_name,
@@ -29,7 +29,8 @@ class DyanomoDbObjectList:
         )
 
         if 'Item' in response:
-            self.__update_metadata_version(object_name, dic, response)
+            if dic is not None:
+                self.__update_metadata_version(object_name, dic, response)
             return True
         else:
             return False
