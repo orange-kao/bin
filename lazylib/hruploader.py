@@ -84,8 +84,9 @@ class HashedRetentionUploader:
             return obj_name
 
         # Not in DyanomoDB, not in S3
+        print("    Uploading to S3...")
         self.lazy_s3.put_obj(file_name, obj_name)
-        print("    Uploaded to S3.")
+        print("    S3 upload completed.")
         self.lazy_s3.put_legal_hold(obj_name)
         print("    Legal hold set.")
         self.dyna_list.add_object(obj_name, file_info)
