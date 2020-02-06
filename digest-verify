@@ -38,7 +38,9 @@ The filename is expected to be the SHA512 of the content.
                     con.print(f"Mismatch: {file_pathname}")
                     file_mismatch_count += 1
                 else:
-                    con.update(f"Progress: {byte_count:_} bytes in {file_count:_} files")
+                    con.update("Progress: {:_} bytes in {:_} files under {}".format(
+                        byte_count, file_count, arg_dir
+                    ))
 
     if file_mismatch_count == 0:
         con.print(f"{byte_count:_} bytes in {file_count:_} files verified")
