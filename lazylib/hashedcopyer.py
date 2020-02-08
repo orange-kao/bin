@@ -61,12 +61,17 @@ class HashedCopyer:
         dst_temp_pathname = os.path.join(dst_dir, dst_temp_basename)
 
         try:
-            shutil.copyfile(src_pathname, dst_temp_pathname)
-            os.rename(dst_temp_pathname, dst_pathname)
-            if del_src:
+            if del_src and os.stat(src_pathname).st_dev == os.stat(dst_dir).st_dev:
+                os.rename(src_pathname, dst_pathname)
+                print(f"    Moved (rename) to {dst_dir}")
+            elif del_src:
+                shutil.copyfile(src_pathname, dst_temp_pathname)
+                os.rename(dst_temp_pathname, dst_pathname)
                 os.remove(src_pathname)
-                print(f"    Moved to {dst_dir}")
+                print(f"    Moved (copy and delete) to {dst_dir}")
             else:
+                shutil.copyfile(src_pathname, dst_temp_pathname)
+                os.rename(dst_temp_pathname, dst_pathname)
                 print(f"    Copied to {dst_dir}")
         except KeyboardInterrupt as e:
             print("Clearning up partial copy...")
