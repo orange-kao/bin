@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from locobjlst import LocalObjectList
+from lazylib.locobjlst import LocalObjectList
 
 def test_all():
     object_list = LocalObjectList(":memory:")
@@ -12,16 +12,16 @@ def test_all():
         "sha1_1m": "1M",
         "cloud_archive_status": "S3Std",
     }
-    object_list.add("objname", object_info)
+    object_list.add_object("objname", object_info)
     assert object_info.get("object_name") is None
     assert object_info.get("item_format") is None
 
-    # Test get() non-exist entry
-    object_info = object_list.get("obj_not_exist")
+    # Test get_object() non-exist entry
+    object_info = object_list.get_object("obj_not_exist")
     assert object_info is None
 
-    # Test get()
-    object_info = object_list.get("objname")
+    # Test get_object()
+    object_info = object_list.get_object("objname")
     assert object_info["size"] == 50
     assert object_info["cloud_archive_status"] == "S3Std"
 
@@ -41,15 +41,15 @@ def test_all():
     else:
         assert False
 
-    # Test update() and get()
-    object_info = object_list.get("objname")
+    # Test update() and get_object()
+    object_info = object_list.get_object("objname")
     assert object_info["size"] == 100
     assert object_info["sha1_4k"] == "4K"
     assert object_info["cloud_archive_status"] == "GDA"
 
-    # Test update_cloud_archive_status() and get()
+    # Test update_cloud_archive_status() and get_object()
     object_list.update_cloud_archive_status("objname", "IA")
-    object_info = object_list.get("objname")
+    object_info = object_list.get_object("objname")
     assert object_info["cloud_archive_status"] == "IA"
 
     object_list.close()

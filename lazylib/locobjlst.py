@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sqlite3
+from lazylib.hruploader import HashedRetentionUploader
 
 class LocalObjectList:
     CURRENT_ITEM_FORMAT = 2
@@ -30,14 +31,40 @@ class LocalObjectList:
                 item_format INTEGER
             );
         """)
+        self.con.execute("""
+            CREATE TABLE IF NOT EXISTS svn_object_list (
+                svn_revision INTEGER,
+                svn_pathname TEXT NOT NULL,
+                object_name TEXT NOT NULL,
+                PRIMARY KEY (svn_revision, svn_pathname),
+                FOREIGN KEY (object_name) REFERENCES object_list(object_name)
+            );
+        """)
         self.con.commit()
 
-    def add(self, object_name, object_metadata):
+    def add_object_by_file(self, file_pathname):
+        object_metadata = HashedRetentionUploader.generate_file_hexdigest_dict(file_pathname)
+        object_metadata["cloud_archive_status"] = None
+        self.add_object(object_metadata["sha512"], object_metadata)
+
+    def add_object(self, object_name, object_metadata):
         sql = "INSERT INTO object_list " \
               "       ( object_name,  size,  md5,  sha1_4k,  sha1_1m,  cloud_archive_status,  item_format) " \
               "VALUES (:object_name, :size, :md5, :sha1_4k, :sha1_1m, :cloud_archive_status, :item_format);"
         object_metadata_extra = {"object_name": object_name, "item_format": self.CURRENT_ITEM_FORMAT}
         self.con.execute(sql, {**object_metadata, **object_metadata_extra})
+        self.con.commit()
+
+    def add_svn_object(self, svn_revision, svn_pathname, object_name):
+        sql = "INSERT INTO svn_object_list " \
+              "       ( svn_revision,  svn_pathname,  object_name) " \
+              "VALUES (:svn_revision, :svn_pathname, :object_name);"
+        sql_dict = {
+            "svn_revision": svn_revision,
+            "svn_pathname": svn_pathname,
+            "object_name": object_name,
+        }
+        self.con.execute(sql, sql_dict)
         self.con.commit()
 
     @staticmethod
@@ -47,7 +74,7 @@ class LocalObjectList:
             row_dict[col[0]] = row[idx]
         return row_dict
 
-    def get(self, object_name):
+    def get_object(self, object_name):
         sql = "SELECT * FROM object_list WHERE object_name = ?;"
         row = self.con.execute(sql, (object_name, )).fetchone()
         return row
