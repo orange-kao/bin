@@ -5,7 +5,7 @@ from lazylib.hruploader import HashedRetentionUploader
 
 class LocalObjectList:
     CURRENT_ITEM_FORMAT = 2
-    TABLE_COLUMNS = [
+    OBJ_TABLE_COLUMNS = [
         "object_name",
         "size",
         "md5",
@@ -14,7 +14,7 @@ class LocalObjectList:
         "cloud_archive_status",
         "item_format",
     ]
-    TABLE_COLUMNS_EXC_PKEY = TABLE_COLUMNS[1:]
+    OBJ_TABLE_COLUMNS_EXC_PKEY = OBJ_TABLE_COLUMNS[1:]
 
     def __init__(self, db_filename):
         self.con = sqlite3.connect(db_filename)
@@ -79,10 +79,10 @@ class LocalObjectList:
         row = self.con.execute(sql, (object_name, )).fetchone()
         return row
 
-    def __update_dict_to_set_and_tuple(self, update_dic, where_list):
+    def __update_dict_to_set_and_tuple(self, table_columns, update_dic, where_list):
         sql_list = []
         update_list = []
-        for key in self.TABLE_COLUMNS_EXC_PKEY:
+        for key in table_columns:
             if key in update_dic:
                 sql_list.append(f"{key} = ?")
                 update_list.append(update_dic[key])
@@ -92,7 +92,7 @@ class LocalObjectList:
         return ret_sql, ret_tuple
 
     def update(self, object_name, dic):
-        set_sql, sql_tuple = self.__update_dict_to_set_and_tuple(dic, [object_name])
+        set_sql, sql_tuple = self.__update_dict_to_set_and_tuple(self.OBJ_TABLE_COLUMNS_EXC_PKEY, dic, [object_name])
         sql = f"UPDATE object_list SET {set_sql} WHERE object_name = ?;"
         rowcount = self.con.execute(sql, sql_tuple).rowcount
         self.con.commit()
