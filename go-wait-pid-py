@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import datetime
+import os
+import time
+from argparse import ArgumentParser
+
+def is_pid_running(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+parser = ArgumentParser()
+parser.add_argument("pid", type=int, nargs="+",
+                    metavar="PID",
+                    help="PIDs to wait")
+args_dict = vars(parser.parse_args())
+pid_list = args_dict["pid"]
+to_update_message = True
+
+while True:
+    if to_update_message:
+        print(f"{datetime.datetime.now().strftime('%FT%T')} Wating for pid {pid_list}")
+        to_update_message = False
+
+    delete_list = []
+    for pid in pid_list:
+        if not is_pid_running(pid):
+            delete_list.append(pid)
+            to_update_message = True
+
+    for pid in delete_list:
+        pid_list.remove(pid)
+
+    if not pid_list:
+        print(f"{datetime.datetime.now().strftime('%FT%T')} Nothing to wait, exit")
+        break
+    time.sleep(0.1)
+
+
