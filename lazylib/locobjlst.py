@@ -32,40 +32,46 @@ class LocalObjectList:
             );
         """)
         self.con.execute("""
-            CREATE TABLE IF NOT EXISTS svn_object_list (
-                svn_revision INTEGER,
-                svn_pathname TEXT NOT NULL,
+            CREATE TABLE IF NOT EXISTS repo_objects (
+                repo_revision INTEGER,
+                repo_pathname TEXT NOT NULL,
                 object_name TEXT NOT NULL,
-                PRIMARY KEY (svn_revision, svn_pathname),
+                PRIMARY KEY (repo_revision, repo_pathname),
                 FOREIGN KEY (object_name) REFERENCES storage_objects(object_name)
             );
         """)
         self.con.commit()
 
-    def add_object_by_file(self, file_pathname):
+    def transactino(self):
+        self.con.execute("BEGIN TRANSACTION;")
+        yield
+        self.con.execute("COMMIT;")
+        self.con.commit()
+
+    def add_storage_object_by_file(self, file_pathname):
         object_metadata = HashedRetentionUploader.generate_file_hexdigest_dict(file_pathname)
         object_metadata["cloud_archive_status"] = None
-        self.add_object(object_metadata["sha512"], object_metadata)
+        self.add_storage_object(object_metadata["sha512"], object_metadata)
 
-    def add_object(self, object_name, object_metadata):
+#    def add_storage_object_by_dir(self, dir_pathname):
+
+    def add_storage_object(self, object_name, object_metadata):
         sql = "INSERT INTO storage_objects " \
               "       ( object_name,  size,  md5,  sha1_4k,  sha1_1m,  cloud_archive_status,  item_format) " \
               "VALUES (:object_name, :size, :md5, :sha1_4k, :sha1_1m, :cloud_archive_status, :item_format);"
         object_metadata_extra = {"object_name": object_name, "item_format": self.STORAGE_OBJECT_CURRENT_ITEM_FORMAT}
         self.con.execute(sql, {**object_metadata, **object_metadata_extra})
-        self.con.commit()
 
-    def add_svn_object(self, svn_revision, svn_pathname, object_name):
-        sql = "INSERT INTO svn_object_list " \
-              "       ( svn_revision,  svn_pathname,  object_name) " \
-              "VALUES (:svn_revision, :svn_pathname, :object_name);"
+    def add_repo_object(self, repo_revision, repo_pathname, object_name):
+        sql = "INSERT INTO repo_objects " \
+              "       ( repo_revision,  repo_pathname,  object_name) " \
+              "VALUES (:repo_revision, :repo_pathname, :object_name);"
         sql_dict = {
-            "svn_revision": svn_revision,
-            "svn_pathname": svn_pathname,
+            "repo_revision": repo_revision,
+            "repo_pathname": repo_pathname,
             "object_name": object_name,
         }
         self.con.execute(sql, sql_dict)
-        self.con.commit()
 
     @staticmethod
     def __dict_factory(cursor, row):
@@ -74,7 +80,7 @@ class LocalObjectList:
             row_dict[col[0]] = row[idx]
         return row_dict
 
-    def get_object(self, object_name):
+    def get_storage_object(self, object_name):
         sql = "SELECT * FROM storage_objects WHERE object_name = ?;"
         row = self.con.execute(sql, (object_name, )).fetchone()
         return row
@@ -91,7 +97,7 @@ class LocalObjectList:
         ret_tuple = tuple(update_list + where_list)
         return ret_sql, ret_tuple
 
-    def update(self, object_name, dic):
+    def update_storage_object(self, object_name, dic):
         set_sql, sql_tuple = self.__update_dict_to_set_and_tuple(
             table_columns=self.STORAGE_OBJECT_COLUMNS_EXC_PKEY,
             update_dict=dic,

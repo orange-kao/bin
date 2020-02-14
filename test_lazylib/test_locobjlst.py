@@ -12,44 +12,44 @@ def test_all():
         "sha1_1m": "1M",
         "cloud_archive_status": "S3Std",
     }
-    object_list.add_object("objname", object_info)
+    object_list.add_storage_object("objname", object_info)
     assert object_info.get("object_name") is None
     assert object_info.get("item_format") is None
 
-    # Test get_object() non-exist entry
-    object_info = object_list.get_object("obj_not_exist")
+    # Test get_storage_object() non-exist entry
+    object_info = object_list.get_storage_object("obj_not_exist")
     assert object_info is None
 
-    # Test get_object()
-    object_info = object_list.get_object("objname")
+    # Test get_storage_object()
+    object_info = object_list.get_storage_object("objname")
     assert object_info["size"] == 50
     assert object_info["cloud_archive_status"] == "S3Std"
 
-    # Test update()
+    # Test update_storage_object()
     object_info = {
         "size": 100,
         "cloud_archive_status": "GDA",
     }
-    object_list.update("objname", object_info)
+    object_list.update_storage_object("objname", object_info)
 
-    # Test update() non-exist entry
+    # Test update_storage_object() non-exist entry
     object_info = {"sha1_4k": "400K"}
     try:
-        object_list.update("obj_not_exist", object_info)
+        object_list.update_storage_object("obj_not_exist", object_info)
     except RuntimeError as e:
         assert isinstance(e, RuntimeError)
     else:
         assert False
 
-    # Test update() and get_object()
-    object_info = object_list.get_object("objname")
+    # Test update_storage_object() and get_storage_object()
+    object_info = object_list.get_storage_object("objname")
     assert object_info["size"] == 100
     assert object_info["sha1_4k"] == "4K"
     assert object_info["cloud_archive_status"] == "GDA"
 
-    # Test update_cloud_archive_status() and get_object()
+    # Test update_storage_object_cloud_archive_status() and get_storage_object()
     object_list.update_cloud_archive_status("objname", "IA")
-    object_info = object_list.get_object("objname")
+    object_info = object_list.get_storage_object("objname")
     assert object_info["cloud_archive_status"] == "IA"
 
     object_list.close()
