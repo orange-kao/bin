@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
+import tempfile
 from lazylib.locobjlst import LocalObjectList
+
+def test_high_level_api():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        print(tmpdirname)
 
 def test_all():
     object_list = LocalObjectList(":memory:")
@@ -25,27 +30,27 @@ def test_all():
     assert object_info["size"] == 50
     assert object_info["cloud_archive_status"] == "S3Std"
 
-    # Test update_storage_object()
-    object_info = {
-        "size": 100,
-        "cloud_archive_status": "GDA",
-    }
-    object_list.update_storage_object("objname", object_info)
+    # Test __update_storage_object()
+#    object_info = {
+#        "size": 100,
+#        "cloud_archive_status": "GDA",
+#    }
+#    object_list.__update_storage_object("objname", object_info)
 
-    # Test update_storage_object() non-exist entry
-    object_info = {"sha1_4k": "400K"}
-    try:
-        object_list.update_storage_object("obj_not_exist", object_info)
-    except RuntimeError as e:
-        assert isinstance(e, RuntimeError)
-    else:
-        assert False
+    # Test __update_storage_object() non-exist entry
+#    object_info = {"sha1_4k": "400K"}
+#    try:
+#        object_list.__update_storage_object("obj_not_exist", object_info)
+#    except RuntimeError as e:
+#        assert isinstance(e, RuntimeError)
+#    else:
+#        assert False
 
-    # Test update_storage_object() and get_storage_object()
-    object_info = object_list.get_storage_object("objname")
-    assert object_info["size"] == 100
-    assert object_info["sha1_4k"] == "4K"
-    assert object_info["cloud_archive_status"] == "GDA"
+    # Test __update_storage_object() and get_storage_object()
+#    object_info = object_list.get_storage_object("objname")
+#    assert object_info["size"] == 100
+#    assert object_info["sha1_4k"] == "4K"
+#    assert object_info["cloud_archive_status"] == "GDA"
 
     # Test update_storage_object_cloud_archive_status() and get_storage_object()
     object_list.update_cloud_archive_status("objname", "IA")
@@ -56,6 +61,7 @@ def test_all():
 
 def main():
     test_all()
+    test_high_level_api()
 
 if __name__ == "__main__":
     main()
