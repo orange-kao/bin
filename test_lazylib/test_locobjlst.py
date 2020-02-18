@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
 
 import tempfile
+import os
 from lazylib.locobjlst import LocalObjectList
 
 def test_high_level_api():
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        print(tmpdirname)
+    object_list = LocalObjectList(":memory:")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        print(temp_dir)
+        for basename in ["f1", "f2", "f3"]:
+            pathname = os.path.join(temp_dir, basename)
+            print(pathname)
+            with open(pathname, "w") as f:
+                f.write(basename)
+
+        #with object_list.transaction() as t:
+        object_list.add_repo_object_by_dir(1, temp_dir)
+
+    for row in object_list.list_repo_object_by_revision(1):
+        print(row)
+
 
 def test_all():
     object_list = LocalObjectList(":memory:")

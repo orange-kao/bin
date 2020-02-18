@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sqlite3
+import os
 from lazylib.hruploader import HashedRetentionUploader
 
 class LocalObjectList:
@@ -53,9 +54,9 @@ class LocalObjectList:
         self.con.commit()
         self.con.close()
 
-    ########################################
+    ############################################################
     # High level APIs
-    ########################################
+    ############################################################
 
     def transaction(self):
         self.con.execute("BEGIN TRANSACTION;")
@@ -70,18 +71,17 @@ class LocalObjectList:
         self.add_storage_object(object_name, object_metadata)
         return object_name
 
-    def add_storage_object_by_dir(self, repo_revision, dir_pathname):
+    def add_repo_object_by_dir(self, repo_revision, dir_pathname):
         for walk_root, walk_dirs, walk_files in os.walk(dir_pathname):
             for walk_file in walk_files:
                 full_pathname = os.path.join(walk_root, walk_file)
                 rel_pathname = os.path.relpath(full_pathname, dir_pathname)
-                object_name = add_storage_object_by_file(full_pathname)
-                add_repo_object(repo_revision, rel_pathname, object_name)
+                object_name = self.add_storage_object_by_file(full_pathname)
+                self.add_repo_object(repo_revision, rel_pathname, object_name)
 
-    ########################################
-    # Low level - database operations
-    # for repo objects
-    ########################################
+    ############################################################
+    # Low level - database operations for repo objects
+    ############################################################
 
     def add_repo_object(self, repo_revision, repo_pathname, object_name):
         sql = """
@@ -96,7 +96,7 @@ class LocalObjectList:
         }
         self.con.execute(sql, sql_dict)
 
-    def list_repo_object(self, repo_revision):
+    def list_repo_object_by_revision(self, repo_revision):
         sql = """
             SELECT
                 repo_objects.repo_pathname,
@@ -109,16 +109,15 @@ class LocalObjectList:
                 storage_objects.item_format
             FROM repo_objects
                 INNER JOIN storage_objects
-                ON repo_objects.object_name = repo_objects.object_name
+                ON repo_objects.object_name = storage_objects.object_name
             WHERE repo_objects.repo_revision = ?;
             """
         row = self.con.execute(sql, (repo_revision, )).fetchall()
         return row
 
-    ########################################
-    # Low level - database operations
-    # for storage objects
-    ########################################
+    ############################################################
+    # Low level - database operations for storage objects
+    ############################################################
 
     def add_storage_object(self, object_name, object_metadata):
         sql = "INSERT INTO storage_objects " \
