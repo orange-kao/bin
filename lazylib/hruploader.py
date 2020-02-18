@@ -73,7 +73,8 @@ class HashedRetentionUploader:
                         f"S3 ETag mismatch for file {repr(file_name)}, "
                         f"object {repr(obj_name)}, "
                         f"expected ETag {repr(exp_etag)}, "
-                        f"actual ETag{repr(obj_info['ETag'])}")
+                        f"actual ETag {repr(obj_info['ETag'])}, "
+                        f"object info {repr(obj_info)}")
 
             print("    Already in S3.")
 
