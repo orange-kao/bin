@@ -9,7 +9,15 @@ class ConsoleProgress:
         self.last_msg_len = 0
         self.cursor_at_the_end = cursor_at_the_end
 
-    def clear(self, new_msg_len):
+    def clear(self):
+        mask = " " * self.last_msg_len
+        self.last_msg_len = 0
+        if self.cursor_at_the_end:
+            print("\r" + mask + "\r", file=self.con, end="")
+        else:
+            print(mask + "\r", file=self.con, end="")
+
+    def __clear(self, new_msg_len):
         if new_msg_len < self.last_msg_len:
             mask = " " * self.last_msg_len
             if self.cursor_at_the_end:
@@ -18,7 +26,7 @@ class ConsoleProgress:
                 print(mask + "\r", file=self.con, end="")
 
     def update(self, msg):
-        self.clear(len(msg))
+        self.__clear(len(msg))
         self.last_msg_len = len(msg)
         if self.cursor_at_the_end:
             print("\r" + msg, file=self.con, end="")
@@ -26,7 +34,7 @@ class ConsoleProgress:
             print(msg + "\r", file=self.con, end="")
 
     def print(self, msg):
-        self.clear(len(msg))
+        self.__clear(len(msg))
         self.last_msg_len = 0
         if self.cursor_at_the_end:
             print("\r" + msg, file=self.con)
