@@ -3,19 +3,20 @@
 import hashlib
 import os
 
-from lazylib import lazys3
-from lazylib import ddbobjlst
+from lazylib.lazys3 import LazyS3
+from lazylib.ddbobjlst import DyanomoDbObjectList
 
 class HashedRetentionUploader:
     def __init__(self, bucket, storage_class, sse, dyna_table, dyna_region):
-        self.lazy_s3 = lazys3.LazyS3( bucket=bucket,
+        self.lazy_s3 = LazyS3( bucket=bucket,
                                       storage_class=storage_class,
                                       sse=sse                      )
 
-        self.dyna_list = ddbobjlst.DyanomoDbObjectList(dyna_table, dyna_region)
+        self.dyna_list = DyanomoDbObjectList(dyna_table, dyna_region)
 
     @staticmethod
     def generate_file_hexdigest_dict(file_name):
+        file_size = os.path.getsize(file_name)
         sha512 = hashlib.sha512()
         md5 = hashlib.md5()
         sha1_4k = hashlib.sha1()
@@ -31,6 +32,7 @@ class HashedRetentionUploader:
                     sha1_1m.update(byte_block)
                 block_count += 1
         return {
+            "size": file_size,
             "sha512": sha512.hexdigest(),
             "md5": md5.hexdigest(),
             "sha1_4k": sha1_4k.hexdigest(),
@@ -71,7 +73,8 @@ class HashedRetentionUploader:
                         f"S3 ETag mismatch for file {repr(file_name)}, "
                         f"object {repr(obj_name)}, "
                         f"expected ETag {repr(exp_etag)}, "
-                        f"actual ETag{repr(obj_info['ETag'])}")
+                        f"actual ETag {repr(obj_info['ETag'])}, "
+                        f"object info {repr(obj_info)}")
 
             print("    Already in S3.")
 

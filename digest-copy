@@ -19,47 +19,68 @@ Skip file copy if
 It accept multiple dest dir.
 It will be evaluated one-by-one, skipping any destination more than 95% full.
 """)
-    parser.add_argument("-e", "--epoch", type=float, action="store",
-                        metavar="EPOCH",
+    parser.add_argument("--skip-older", type=float, action="store",
+                        metavar="TIME_OLDEST",
                         help="Epoch threshold to skip older files")
-    parser.add_argument("-s", "--size-min", type=int, action="store",
-                        metavar="SIZE",
+    parser.add_argument("--skip-newer", type=float, action="store",
+                        metavar="TIME_NEWEST",
+                        help="Epoch threshold to skip newer files")
+
+    parser.add_argument("--skip-smaller", type=int, action="store",
+                        metavar="SIZE_MIN",
                         help="Size threshold to skip smaller files")
+    parser.add_argument("--skip-larger", type=int, action="store",
+                        metavar="SIZE_MAX",
+                        help="Size threshold to skip larger files")
+
     parser.add_argument("--move-src-repo", action="store_true",
-                        help="Move the file instead of copying.\n"
+                        help="Treat SRC as repo and MOVE files\n"
                              "WARNING: It will NOT verify the SHA512")
-    parser.add_argument('src', type=str, action="store",
+
+    parser.add_argument("-s", "--src", type=str, nargs="+", required=True,
                         metavar="SRC",
-                        help="Source directory")
-    parser.add_argument('dest', type=str, nargs='+',
+                        help="Source directory/directories")
+    parser.add_argument("-d", "--dest", type=str, nargs="+", required=True,
                         metavar="DEST",
                         help="Destination directory/directories")
+
     args_dict = vars(parser.parse_args())
 
-    src_dir = args_dict["src"]
-    threshold_ts = args_dict.get("epoch")
-    threshold_size = args_dict.get("size_min")
+    threshold_min_ts = args_dict["skip_older"]
+    threshold_max_ts = args_dict["skip_newer"]
+    threshold_min_size = args_dict["skip_smaller"]
+    threshold_max_size = args_dict["skip_larger"]
+    src_dir_list = args_dict["src"]
     dst_dir_list = args_dict["dest"]
     is_move = args_dict.get("move_src_repo")
 
     copyer = HashedCopyer(dst_dir_list)
-    for root, dirs, files in os.walk(src_dir):
-        for file_name in files:
-            file_pathname = os.path.join(root, file_name)
+    for src_dir in src_dir_list:
+        for root, dirs, files in os.walk(src_dir):
+            for file_name in files:
+                file_pathname = os.path.join(root, file_name)
 
-            if threshold_ts is not None:
-                if os.path.getmtime(file_pathname) < threshold_ts:
+                if threshold_min_ts is not None:
+                    if os.path.getmtime(file_pathname) < threshold_min_ts:
+                        continue
+
+                if threshold_max_ts is not None:
+                    if os.path.getmtime(file_pathname) > threshold_max_ts:
+                        continue
+
+                if threshold_min_size is not None:
+                    if os.path.getsize(file_pathname) < threshold_min_size:
+                        continue
+
+                if threshold_max_size is not None:
+                    if os.path.getsize(file_pathname) > threshold_max_size:
+                        continue
+
+                if is_move:
+                    copyer.move_src_repo(file_pathname)
                     continue
 
-            if threshold_size is not None:
-                if os.path.getsize(file_pathname) < threshold_size:
-                    continue
-
-            if is_move:
-                copyer.move_src_repo(file_pathname)
-                continue
-
-            copyer.copy(file_pathname)
+                copyer.copy(file_pathname)
 
 if __name__ == "__main__":
     main()
